@@ -1,3 +1,5 @@
+// OpenBSD netcat (Debian patchlevel 1.89-4ubuntu1)
+
 /*
  * ElevatorLogic.h
  *
@@ -17,6 +19,7 @@
 #include "Event.h"
 #include "Environment.h"
 
+#include <algorithm>
 #include <list>
 #include <map>
 #include <set>
@@ -24,21 +27,32 @@
 class Elevator;
 class Floor;
 class Interface;
+class ElevatorLogic;
 
-class MyElevator : public Elevator {
+class MyElevator {
 private:
-	std::vector<Floor*> floor_;
+	Elevator *elev;
+	ElevatorLogic* logic;
+	Floor* initialFloor;
+
+	
 	std::list<Person*> person_;
 	std::list<Floor*> stop_;
-
 	bool moved;
+	
 
 public:
-	MyElevator();
-	void Init(const Elevator*);
-
+	
+	std::list<Floor*> floor_;
+	bool HasMoved() {return moved;}
+	MyElevator(Elevator *e, ElevatorLogic* l);
+	// void Init();
+	Elevator* GetElevator() {return elev;};
+	bool HasElevator(const Elevator* e) {return e == elev;};
+	bool HasStop(const Floor* f);
 	void AddStop(const Person*);
 	void Move(Environment &env);
+	int GetDistanceTo(const Floor* f);
 	int GetTimeTo(const Floor*);
 	//void GoTo(const Floor*);
 	
@@ -54,11 +68,17 @@ private:
 	void HandleStopped(Environment &env, const Event &e);
 	void HandleOpened(Environment &env, const Event &e);
 	void HandleClosed(Environment &env, const Event &e);
+	void HandleEntered(Environment &env, const Event &e);
+	void HandleExited(Environment &env, const Event &e);
 
-	Person* GetCaller(const Event &e);
+	
+	Person* GetPerson(const Event &e);
+	void AddMyElevator(const Interface* i);
 	MyElevator* FindElevator(const Person* p);
-	bool IsCall(const Event &e);
+	MyElevator* GetMyElevator(const Elevator* elev);
 
+	bool FromElevatorInterface(const Event &e);
+	bool FromFloorInterface(const Event &e);
 public:
 	ElevatorLogic();
 	virtual ~ElevatorLogic();
