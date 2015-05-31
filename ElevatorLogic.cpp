@@ -8,176 +8,17 @@
 #include "ElevatorLogic.h"
 
 #include <iostream>
- #include <fstream>
-#include <cstdlib>
- #include <stdio.h>
+
+#include "Interface.h"
+#include "Person.h"
+#include "Floor.h"
+#include "Elevator.h"
+#include "Event.h"
+#include "Environment.h"
+
+#include "stdio.h"
 
 using namespace std;
-
-// void MyElevator::GoTo(const Floor *f) {
-// 	if (IsAbove(f)) {
-// 		env.SendEvent("Elevator::Up", 0, this);
-// 		env.SendEvent("Interface::Notify", 4, this);
-// 	}
-// 	else {
-// 		env.SendEvent("Elevator::Down", 0, this);
-// 		env.SendEvent("Interface::Notify", 4, this);
-// 	}
-// }
-
-
-MyElevator::MyElevator(Elevator *e, ElevatorLogic* l) : elev(e), logic(l), moved(false) {
-	
-
-	initialFloor = e->GetCurrentFloor();
-	int interf_cnt = e->GetInterfaceCount();
-	floor_.push_back(static_cast<Floor*>(e->GetInterface(0)->GetLoadable(0)));
-	list<Floor*>::iterator pos;
-	Floor* f;
-	bool b = true;
-	cout << "size" << floor_.size() << interf_cnt << endl;
-
-	for (int i=1; i<interf_cnt; i++, b = true) {
-		
-		f = static_cast<Floor*>(e->GetInterface(i)->GetLoadable(0));
-		for (pos = floor_.begin(); pos != floor_.end(); pos++) {
-			if (f->IsAbove(*pos)) {   //smalles element first (ascending order)
-				floor_.insert(pos, f);
-				b = false;
-				break;
-			}
-		}
-		if (b)
-			floor_.push_back(f);	
-	}
-
-	// for (int i = 0; i < interf_cnt; i++) {
-	// 	cout << "floor " << floor_.front()->GetId() << endl;
-	// 	floor_.pop_front();
-	// }
-
-}
-
-
-
-void MyElevator::AddStop(const Person* p) {
-
-	if (stop_.size() != 0) {
-		if (stop_.back() == p->GetCurrentFloor()) {
-
-		}
-		else {
-			stop_.push_back(p->GetCurrentFloor());
-		}
-	}
-	else {
-		stop_.push_back(p->GetCurrentFloor());
-	}
-	
-	stop_.push_back(p->GetFinalFloor());
-}
-
-int MyElevator::GetDistanceTo(const Floor* f) {
-
-	if (initialFloor == f) {
-		return 0;
-	}
-
-	//cout << "size" << floor_.size() << endl;
-	list<Floor*>::iterator start = find(floor_.begin(), floor_.end(), initialFloor);
-	list<Floor*>::iterator end = find(floor_.begin(), floor_.end(), f);
-	int distance = f->GetHeight() + initialFloor->GetHeight();
-	if (distance % 2 != 0) {
-		return -1;
-	}
-	distance /= 2;
-	bool up = !f->IsAbove(initialFloor);
-	// cout << initialFloor->GetId() << " to " << f->GetId() << " bool "<< up << endl;
-	if (up) {
-		start++;
-		while (start != end) {
-			//cout << (*start)->GetId() << " and " << (*end)->GetId() << endl;
-
-			//cout << distance << endl;
-			distance += (*start)->GetHeight();
-			start++;
-		}
-	}
-	else {
-		start--;
-		
-		while (start != end) {
-			//cout << (*start)->GetId() << " and " << (*end)->GetId() << endl;
-			//cout << distance << endl;
-
-			distance += (*start)->GetHeight();
-			start--;
-		}
-
-	}
-	//cout << distance << endl;
-
-	return distance;
-	
-	
-
-}
-
-bool MyElevator::HasStop(const Floor* f) {
-	int speed = elev->GetSpeed();
-
-	int distance = GetDistanceTo(f);
-
-	cout << distance << " mod  " << speed <<  " = " << (distance % speed) << endl;
-
-	if (distance % speed != 0 || distance == -1) {
-		cout << "false" << endl;
-		return false;
-	}
-		
-	else 
-		return true;
-}
-
-
-
-void MyElevator::Move(Environment &env) {
-	cout << elev->GetPosition() << " " << elev->GetId() << " floor id "<< elev->GetCurrentFloor()->GetId() << endl;
-	if (stop_.size() > 0) { 
-
-
-
-
-		if (stop_.front()->IsAbove(elev->GetCurrentFloor()) 
-			|| (elev->GetPosition() > 0.5 && elev->GetCurrentFloor() == stop_.front())) {
-			if (elev->GetState() != Elevator::Down)
-				env.SendEvent("Elevator::Down", 0, logic, elev);
-			env.SendEvent("Interface::Notify", 1, elev->GetInterface(0), elev);
-		}
-		else if (stop_.front()->IsBelow(elev->GetCurrentFloor()) 
-			|| (elev->GetPosition() < 0.5 && elev->GetCurrentFloor() == stop_.front())) {
-			if (elev->GetState() != Elevator::Up)
-				env.SendEvent("Elevator::Up", 0, logic, elev);
-			env.SendEvent("Interface::Notify", 1, elev->GetInterface(0), elev);
-		}
-		else {
-			env.SendEvent("Elevator::Stop", 0, logic, elev);
-			stop_.pop_front();
-		}
-		moved = true;
-		
-	}
-	else {
-		env.SendEvent("Elevator::Stop", 0, logic, elev);
-	}
-}
-
-
-
-//-------------------------------------------------------------------------------------
-
-
-
 
 ElevatorLogic::ElevatorLogic() : EventHandler("ElevatorLogic") {
 	
@@ -188,240 +29,402 @@ ElevatorLogic::~ElevatorLogic() {
 
 void ElevatorLogic::Initialize(Environment &env) {
 	env.RegisterEventHandler("Interface::Notify", this, &ElevatorLogic::HandleNotify);
+	env.RegisterEventHandler("Elevator::Moving", this, &ElevatorLogic::HandleMoving);
 	env.RegisterEventHandler("Elevator::Stopped", this, &ElevatorLogic::HandleStopped);
 	env.RegisterEventHandler("Elevator::Opened", this, &ElevatorLogic::HandleOpened);
 	env.RegisterEventHandler("Elevator::Closed", this, &ElevatorLogic::HandleClosed);
 	env.RegisterEventHandler("Person::Entered", this, &ElevatorLogic::HandleEntered);
 	env.RegisterEventHandler("Person::Exited", this, &ElevatorLogic::HandleExited);
+	env.RegisterEventHandler("Environment::All", this, &ElevatorLogic::HandleAll);
+	env.RegisterEventHandler("Elevator::Malfunction", this, &ElevatorLogic::HandleMalfunction);
+	env.RegisterEventHandler("Elevator::Fixed", this, &ElevatorLogic::HandleFixed);
+
 }
 
-MyElevator* ElevatorLogic::GetMyElevator(const Elevator* e) {
-	for (unsigned int i=0; i<elev_.size(); i++) {
-		if (elev_[i]->HasElevator(e))
-			return elev_[i];
-	}
-	return NULL;
+void ElevatorLogic::HandleAll(Environment &env, const Event &e) {
+
+	// Loadable *loadable = interf->GetLoadable(0);
+
+	// if (loadable->GetType() == "Floor") {
+
+	// }
+
+
+	log += to_string(e.GetTime());
+	log += " ";
+	log += e.GetEvent();
+	log.push_back('\n');
 }
 
-MyElevator* ElevatorLogic::FindElevator(const Person* p) {
-
-	Floor* f = p->GetCurrentFloor();
-	vector<MyElevator*> possible;
-
-	for (int i=0; i<f->GetInterfaceCount(); i++) {
-		Interface* interf = f->GetInterface(i);
-		for (int j=0; j<interf->GetLoadableCount(); j++) {
-			Elevator* elev = static_cast<Elevator*>(interf->GetLoadable(j));
-			if (GetMyElevator(elev) != NULL) {
-				MyElevator *myElev = GetMyElevator(elev);
-				if (myElev->HasStop(p->GetCurrentFloor()) && myElev->HasStop(p->GetFinalFloor()))
-					possible.push_back(GetMyElevator(elev));
-			}
-		}
-	}
-	cout << p->GetId() << endl;
-	for (unsigned int i=0; i<possible.size(); i++) {
-		if (!possible[i]->HasMoved()) {
-			return possible[i];
-		}
-		
-			
-	}
-
-
-
-	return possible[0];
-}
-
-
-Person* ElevatorLogic::GetPerson(const Event &e) {
-	EventHandler *handler = e.GetEventHandler();
-	Person * caller = NULL;
-	if (handler->GetName().substr(0,6) == "Person") {
-		caller = static_cast<Person*>(handler);		
-	}
-	return caller;
-}
-
-
-
-bool ElevatorLogic::FromFloorInterface(const Event &e) {
-	Interface *interf = static_cast<Interface*>(e.GetSender());
-
-	if (interf->GetLoadable(0)->GetType() == "Elevator") {
-		return true;
-	}
-	else
-		return false;
-}
-
-void ElevatorLogic::AddMyElevator(const Interface* interf) {
-	int ldbl_cnt = interf->GetLoadableCount();
-	for (int i=0; i<ldbl_cnt; ++i) {
-		Loadable *loadable = interf->GetLoadable(i);
-		if (loadable->GetType() == "Elevator") {
-			Elevator*  e = static_cast<Elevator*>(loadable);
-			if (GetMyElevator(e) == NULL) {
-				MyElevator* elev = new MyElevator(e, this);
-				elev_.push_back(elev);
-			}
-		}
-	}
-}
-
-
-bool ElevatorLogic::FromElevatorInterface(const Event &e) {
-	Interface *interf = static_cast<Interface*>(e.GetSender());
-	if (interf->GetLoadable(0)->GetType() == "Floor" ) {
-		return true;
-	}
-	else 
-		return false;
-}
 
 void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 
-	
+	// FILE *in;
+	// char buff[512];
+
+	// if(!(in = popen("cd .. && cd loc && ls", "r"))) {
+	// 	return;
+	// }
+	// string out;
+
+	// while (fgets(buff, sizeof(buff), in) != NULL) {
+	// 	out += buff;
+	// }
+
+	// throw overflow_error(out);
 
 
-	MyElevator *myElev;
-	if (FromFloorInterface(e)) {
-		AddMyElevator(static_cast<Interface*>(e.GetSender()));
-		cout << "person" << endl;
-		Person* caller = GetPerson(e);
 
-		myElev = FindElevator(caller);
+
+
+
+	Interface *interf = static_cast<Interface*>(e.GetSender());
+	Person *person = static_cast<Person*>(e.GetEventHandler());
+
+	Loadable *loadable = interf->GetLoadable(0);
+
+	if (loadable->GetType() == "Elevator") {
+		log += "# initial floor ";
+		log += to_string(person->GetCurrentFloor()->GetId());
+		log += " # final floor";
+		log += to_string(person->GetFinalFloor()->GetId());
+
+		log += " #elevator floor ";
+
+		Elevator *elev = FindElevator(person);
+
+		log += to_string(elev->GetCurrentFloor()->GetId());
+
+		cout << "elevator found " << elev->GetId() << endl; 
+
+
+		AddToQueue(person, elev);
 
 		
-		// string a = to_string(elev_[0]->GetElevator()->GetSpeed());
 
-
-
-
-		// //string b = to_string(elev_[1]->GetElevator()->GetSpeed());
-		
-		// cout << "wtf " << a  << " wtf2 "  << endl;
-
-		// throw std::overflow_error(a );
-
-		myElev->AddStop(caller);
-
-		if (!myElev->HasMoved())
-			myElev->Move(env);
-	}
-	else if (FromElevatorInterface(e)) {
-		if (GetPerson(e) == NULL) {
-			myElev = GetMyElevator(static_cast<Elevator*>(e.GetEventHandler()));
-			myElev->Move(env);
+		if (SetNextStop(elev)) {
+			ExecuteTask(elev, env);
 		}
-		
 	}
+	else if (loadable->GetType() == "Floor") {
+
+		Elevator* elev = person->GetCurrentElevator();
+
+		if (task[elev].needsChange) {
+			task[elev].nextStop = static_cast<Floor*>(loadable);
+			state[elev].requested = true;
+
+			ExecuteTask(elev, env);
+		}
+
+		log += "# floor to";
+		log += to_string(loadable->GetId());
+		// Elevator *elev = person->GetCurrentElevator();
+		
+		// AddToQueue(elev, person);
+
+		
+
+		// if (SetNextStop(elev)) {
+		// 	ExecuteTask(elev, env);
+		// }
+	}
+}
+
+Elevator* ElevatorLogic::FindElevator(Person *person) {
+
+	Floor *floor = person->GetCurrentFloor();
+	Interface *interf;
+	set<Elevator*> possible;
+
+	bool direct = false;
 	
-	// 
+	for (int i = 0; i < floor->GetInterfaceCount(); i++) {
+		interf = floor->GetInterface(i);	
+		for (int j = 0; j < interf->GetLoadableCount(); j++) {
+			Elevator *e = static_cast<Elevator*>(interf->GetLoadable(j));
 
-	// 	for (i=0; i<elev_.size(); i++) {
-	// 					cur_floor = elev_[i]->GetCurrentFloor();
-	// 		if (elev_[i]->IsHighestFloor(cur_floor)) {
-	// 			env.SendEvent("Elevator::Stop", 0, this, elev_[i]);
+			SetTask(e);
+			SetState(e);
 
-	// 		}
-	// 		else {
-	// 			env.SendEvent("Elevator::Up", 0, this, elev_[i]);
-	// 			env.SendEvent("Interface::Notify", 1, interf, this);
-	// 		}
-	// 	}
+			if (e->HasFloor(person->GetCurrentFloor()) && e->HasFloor(person->GetFinalFloor())) {
+				direct = true;
+			}
+			possible.insert(e);
+		}
+	}
 
-	// 	env.SendEvent("Interface::Notify", 0, interf, handler);
-	// }
+	for (Elevator* elev : possible) {
+		if (direct) {
+			if (elev->GetCurrentFloor() == floor && elev->HasFloor(person->GetCurrentFloor()) && elev->HasFloor(person->GetFinalFloor())) {
+				return elev;
+			}
+			if (!elev->HasFloor(person->GetFinalFloor())) {
+				possible.erase(elev);
+			}
+		}
+		else {
+			if (elev->GetCurrentFloor() == floor) {
+				return elev;
+			}
+		}
+	}
+
+	return *possible.begin();
+}
+
+void ElevatorLogic::AddToQueue(Person *person, Elevator *elev) {
+
+	cout << "add task" << endl;
+	task[elev].queue.push_back(person);
+	cout << "added" << endl;
+
+}
+
+//Note that map::insert won't insert if key is already present in map
+
+void ElevatorLogic::SetTask(Elevator *elev) {
+
+	Floor *nextStop = NULL;
+	list<Person*> queue;
+	set<Person*> passengers;
+	pair<Elevator*,ElevatorTask> elevTask = {elev, {nextStop, false, false, queue} };
+
+	task.insert(elevTask);
+	cout << 1 << endl;	
+
+}
+
+void ElevatorLogic::SetState(Elevator *elev) {
+
+	set<Person*> passengers;
+
+	pair<Elevator*,ElevatorState> elevState = {elev, {passengers, false, false, false, false}};
+	state.insert(elevState);
+}
+
+bool ElevatorLogic::SetNextStop(Elevator *elev) {
+
+	if (task[elev].queue.size() == 0 || task[elev].busy) {
+		return false;
+	}
+
+	state[elev].requested = true;
+
+	Person *person = task[elev].queue.front();
+
+	cout << "to person " << person->GetId() << " queue size " << task[elev].queue.size() << endl;
+
+	if (person->GetCurrentElevator() == elev) {
+		Floor *target = person->GetFinalFloor();
+		if (elev->HasFloor(target)) {
+			task[elev].nextStop = target;	
+		}
+		else {
+			task[elev].needsChange = true;
+			return false;
+		}
+	}
+	else {
+		task[elev].nextStop = person->GetCurrentFloor();
+	}
+
+	return true;
+}
+
+void ElevatorLogic::ExecuteTask(Elevator *elev, Environment &env) {
+
+	if (!state[elev].broken && !state[elev].overloaded && !state[elev].beeping && state[elev].requested) {
+
+		cout << "exec" << endl;
+		task[elev].busy = true;
+
+		if (elev->GetCurrentFloor() == task[elev].nextStop && elev->GetPosition() < 0.51 && elev->GetPosition() > 0.49) {
+			env.SendEvent("Elevator::Open", 0, this, elev);
+		} 
+		else if (elev->GetCurrentFloor() == task[elev].nextStop) {
+			if (elev->GetPosition() < 0.5 && elev->GetPosition()) {
+				env.SendEvent("Elevator::Up", 0, this, elev);
+			}
+			else {
+				env.SendEvent("Elevator::Down", 0, this, elev);
+			}
+		}
+		else if (elev->GetCurrentFloor()->IsAbove(task[elev].nextStop)) {
+
+			env.SendEvent("Elevator::Up", 0, this, elev);
+		}
+		else {
+			env.SendEvent("Elevator::Down", 0, this, elev);
+		}
+	}	
 	
+}
+
+void ElevatorLogic::HandleMalfunction(Environment &env, const Event &e) {
+
+	Elevator *elev = static_cast<Elevator*>(e.GetSender());
+
+	env.SendEvent("Elevator::Stop", 0, this, elev);
+
+	env.CancelEvent(state[elev].movingID);
+
+	state[elev].broken = true;
+}
+
+void ElevatorLogic::HandleFixed(Environment &env, const Event &e) {
+
+	Elevator *elev = static_cast<Elevator*>(e.GetSender());
+
+	state[elev].broken = false;
 
 
+	ExecuteTask(elev, env);
 	
+}
 
+int ElevatorLogic::GetWeight(set<Person*> passengers) {
 
+	int load = 0;
+	for (Person* person : passengers) {
+		load += person->GetWeight();
+	}
+	return load;
+}
 
+bool ElevatorLogic::IsOverloaded(Elevator *elev) {
 
-	// for (i=0; i<elev_.size(); i++) {
-	// 	std::cout << elev_[i]->GetPosition() << elev_[i]->GetSpeed() << "floor " << elev_[i]->GetCurrentFloor()->GetHeight() << std::endl;
-	// 	Floor *cur_floor = elev_[i]->GetCurrentFloor();
-	// 	if (elev_[i]->GetState() == Elevator::Up) {
-	// 		std::cout << "up" << std::endl;
-	// 	}
-	// 	for (j=0; i<cur_floor->GetInterfaceCount(); i++) {
-	// 		if (interf == cur_floor->GetInterface(i)) {
-	// 			env.SendEvent("Elevator::Stop", 0, this, elev_[i]);
-	// 			found = true;
-	// 		}
-
-	// 	}
-		
-	// 	if (!found) {
-	// 		env.SendEvent("Elevator::Up", 0, this, elev_[i]);
-	// 		env.SendEvent("Interface::Notify", 1, interf);
-	// 		moved_ = true;
-	// 	}
-		
-	// }
-
-
-
-
-	// if (loadable->GetType() == "Elevator") {
-
-	// 	Elevator *ele = static_cast<Elevator*>(loadable);
-		
-		
-	// 	//env.SendEvent("Elevator::Stop", 2, this, ele);
-		
-		
-		
-	// 	if (!ele->IsHighestFloor(ele->GetCurrentFloor())) {
-	// 		env.SendEvent("Elevator::Up", 0, this, ele);
-			
-	// 		env.SendEvent("Interface::Notify", 1, this, ele);
-
-			
-	// 	}
-	// 	else {
-	// 		env.SendEvent("Elevator::Stop", 1, this, ele);
-
-
-	// 		env.SendEvent("Elevator::Open", 1, this, ele);
-	// 	}
-		
-	// }
+	if (GetWeight(state[elev].passengers) > elev->GetMaxLoad()) {
+		state[elev].overloaded = true;
+		return true;
+	}
+	else {
+		state[elev].overloaded = false;
+		return false;
+	}
 }
 
 void ElevatorLogic::HandleEntered(Environment &env, const Event &e) {
-	Elevator *ele =static_cast<Elevator*>(e.GetEventHandler());
 
-	env.SendEvent("Elevator::Close", 0, this, ele);
+	Person *person = static_cast<Person*>(e.GetSender());
+	Elevator *elev = static_cast<Elevator*>(e.GetEventHandler());
+
+	EraseFromQueue(person, elev);
+
+	AddToQueue(person, elev);
+
+	state[elev].passengers.insert(person);
+
+	if (IsOverloaded(elev)) {
+		env.SendEvent("Elevator::Beep", 0, this, elev);
+		state[elev].beeping = true;
+	}
+	else {
+		if (state[elev].beeping) {
+			env.SendEvent("Elevator::StopBeep", 0, this, elev);
+			state[elev].beeping = false;
+		}
+		env.SendEvent("Elevator::Close", 0, this, elev);	
+	}
+
 }
 
 void ElevatorLogic::HandleExited(Environment &env, const Event &e) {
-	Elevator *ele = static_cast<Elevator*>(e.GetEventHandler());
 
-	env.SendEvent("Elevator::Close", 0, this, ele);
+	Person *person = static_cast<Person*>(e.GetSender());
+	Elevator *elev = static_cast<Elevator*>(e.GetEventHandler());
+
+	EraseFromQueue(person, elev);
+
+	state[elev].passengers.erase(person);
+
+
+	if (!IsOverloaded(elev)) {
+		if (state[elev].beeping) {
+			env.SendEvent("Elevator::StopBeep", 0, this, elev);
+			state[elev].beeping = false;
+		}
+		env.SendEvent("Elevator::Close", 0, this, elev);	
+	}
+}
+
+
+
+void ElevatorLogic::EraseFromQueue(Person *person, Elevator *elev) {
+
+	for (list<Person*>::iterator it = task[elev].queue.begin(); it != task[elev].queue.end(); it++) {
+		if (*it == person) {
+			cout << "entered: " << "erase " << (*it)->GetId() << endl;
+			task[elev].queue.erase(it);
+			cout << "erased" << endl;
+			break;
+
+		}
+		
+	}
+}
+
+void ElevatorLogic::HandleMoving(Environment &env, const Event &e) {
+
+	Elevator *elev = static_cast<Elevator*>(e.GetSender());
+
+	Floor *current = elev->GetCurrentFloor();
+
+	if (current == task[elev].nextStop && elev->GetPosition() < 0.51 && elev->GetPosition() > 0.49) {
+			cout << elev->GetPosition() << endl;
+
+		env.SendEvent("Elevator::Stop", 0, this, elev);
+	}
+	else {
+		if (elev->GetState() == Elevator::Up && elev->IsHighestFloor(current) && elev->GetPosition() > 0.49) {
+			env.SendEvent("Elevator::Stop", 0, this, elev);
+			cout << "throw" << endl;
+
+			throw runtime_error(log);
+			//throw runtime_error(to_string(task[elev].queue.size()) + " per cur " + to_string(task[elev].queue.front()->GetCurrentFloor()->GetId()) + " pers final " + to_string(task[elev].queue.front()->GetFinalFloor()->GetId()) + " elev cur " + to_string(elev->GetCurrentFloor()->GetId()) + " elev next" + to_string(task[elev].nextStop->GetId()) + " is on elev " + to_string(task[elev].queue.front()->GetCurrentElevator() == elev));
+		}
+		else if (elev->GetState() == Elevator::Down && elev->IsLowestFloor(current) && elev->GetPosition() < 0.51) {
+			env.SendEvent("Elevator::Stop", 0, this, elev);
+			cout << "throw" << endl;
+			throw runtime_error(log);	
+			//throw runtime_error(to_string(task[elev].queue.size()) + " per cur " + to_string(task[elev].queue.front()->GetCurrentFloor()->GetId()) + " pers final " + to_string(task[elev].queue.front()->GetFinalFloor()->GetId()) + " elev cur " + to_string(elev->GetCurrentFloor()->GetId()) + " elev next" + to_string(task[elev].nextStop->GetId()) + " is on elev " + to_string(task[elev].queue.front()->GetCurrentElevator() == elev));
+
+		}
+		else {
+			state[elev].movingID = env.SendEvent("Elevator::Moving", 1, elev);
+
+		}
+	}
 }
 
 void ElevatorLogic::HandleStopped(Environment &env, const Event &e) {
 
-	Elevator *ele = static_cast<Elevator*>(e.GetSender());
+	Elevator *elev = static_cast<Elevator*>(e.GetSender());
 
-	env.SendEvent("Elevator::Open", 0, this, ele);
+	string msg = e.GetData();
+
+	cout << elev->GetPosition() << endl;
+
+	if (!state[elev].broken) {
+		env.SendEvent("Elevator::Open", 0, this, elev);
+	}
+	
 }
 
 void ElevatorLogic::HandleOpened(Environment &env, const Event &e) {
 
-	// Elevator *ele = static_cast<Elevator*>(e.GetSender());
+	// Elevator *elev = static_cast<Elevator*>(e.GetSender());
 
-	// env.SendEvent("Elevator::Close", 4, this, ele);
+	// env.SendEvent("Elevator::Close", 4, this, elev);
 }
 
 void ElevatorLogic::HandleClosed(Environment &env, const Event &e) {
 
-	MyElevator* elev = GetMyElevator(static_cast<Elevator*>(e.GetSender()));
+	Elevator *elev = static_cast<Elevator*>(e.GetSender());
+	cout << "closed: size:" << task[elev].queue.size() << endl;
+	task[elev].busy = false;
+	if (SetNextStop(elev)) {
+		ExecuteTask(elev, env);
+	}
 
-	elev->Move(env);
-	
 }
