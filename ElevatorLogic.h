@@ -35,7 +35,7 @@ public:
 
 	} ElevatorTask;
 
-	typedef struct {
+	struct ElevatorState {
 		std::set<Person*> passengers;
 		bool beeping;
 		bool broken;
@@ -43,7 +43,7 @@ public:
 		bool requested;
 		int movingID;
 
-	} ElevatorState;
+	} ;
 
 
 private:
@@ -61,7 +61,7 @@ private:
 	void HandleFixed(Environment &env, const Event &e);
 
 	
-	Elevator* FindElevator(Person *person);
+	Elevator* FindElevator(Person *person, Interface *interf);
 	void AddToQueue(Person *person, Elevator *elev);
 	void EraseFromQueue(Person *person, Elevator *elev);
 	void SetTask(Elevator *elev);

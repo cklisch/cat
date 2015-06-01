@@ -91,7 +91,7 @@ void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 
 		log += " #elevator floor ";
 
-		Elevator *elev = FindElevator(person);
+		Elevator *elev = FindElevator(person, interf);
 
 		log += to_string(elev->GetCurrentFloor()->GetId());
 
@@ -131,28 +131,26 @@ void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 	}
 }
 
-Elevator* ElevatorLogic::FindElevator(Person *person) {
+Elevator* ElevatorLogic::FindElevator(Person *person, Interface *interf) {
 
 	Floor *floor = person->GetCurrentFloor();
-	Interface *interf;
 	set<Elevator*> possible;
 
 	bool direct = false;
 	
-	for (int i = 0; i < floor->GetInterfaceCount(); i++) {
-		interf = floor->GetInterface(i);	
-		for (int j = 0; j < interf->GetLoadableCount(); j++) {
-			Elevator *e = static_cast<Elevator*>(interf->GetLoadable(j));
+		
+	for (int j = 0; j < interf->GetLoadableCount(); j++) {
+		Elevator *e = static_cast<Elevator*>(interf->GetLoadable(j));
 
-			SetTask(e);
-			SetState(e);
+		SetTask(e);
+		SetState(e);
 
-			if (e->HasFloor(person->GetCurrentFloor()) && e->HasFloor(person->GetFinalFloor())) {
-				direct = true;
-			}
-			possible.insert(e);
+		if (e->HasFloor(person->GetCurrentFloor()) && e->HasFloor(person->GetFinalFloor())) {
+			direct = true;
 		}
+		possible.insert(e);
 	}
+	
 
 	for (Elevator* elev : possible) {
 		if (direct) {
