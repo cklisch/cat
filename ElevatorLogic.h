@@ -60,6 +60,7 @@ private:
 	void HandleMalfunction(Environment &env, const Event &e);
 	void HandleFixed(Environment &env, const Event &e);
 
+
 	
 	Elevator* FindElevator(Person *person, Interface *interf);
 	void AddToQueue(Person *person, Elevator *elev);
@@ -70,6 +71,7 @@ private:
 	void ExecuteTask(Elevator *elev, Environment &env);
 	int GetWeight(std::set<Person*> passengers);
 	bool IsOverloaded(Elevator *elev);
+	int GetDistance(Floor *f1, Floor *f2);
 	
 
 	std::string log;

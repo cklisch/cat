@@ -74,7 +74,7 @@ void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 	// throw overflow_error(out);
 
 
-
+	//system("ls");
 
 
 
@@ -84,6 +84,7 @@ void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 	Loadable *loadable = interf->GetLoadable(0);
 
 	if (loadable->GetType() == "Elevator") {
+
 		log += "# initial floor ";
 		log += to_string(person->GetCurrentFloor()->GetId());
 		log += " # final floor";
@@ -111,6 +112,7 @@ void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 		Elevator* elev = person->GetCurrentElevator();
 
 		if (task[elev].needsChange) {
+			needsChange = false;
 			task[elev].nextStop = static_cast<Floor*>(loadable);
 			state[elev].requested = true;
 
@@ -134,10 +136,8 @@ void ElevatorLogic::HandleNotify(Environment &env, const Event &e) {
 Elevator* ElevatorLogic::FindElevator(Person *person, Interface *interf) {
 
 	Floor *floor = person->GetCurrentFloor();
-	set<Elevator*> possible;
 
-	bool direct = false;
-	
+	set<Elevator*> possible;	
 		
 	for (int j = 0; j < interf->GetLoadableCount(); j++) {
 		Elevator *e = static_cast<Elevator*>(interf->GetLoadable(j));
@@ -145,27 +145,14 @@ Elevator* ElevatorLogic::FindElevator(Person *person, Interface *interf) {
 		SetTask(e);
 		SetState(e);
 
-		if (e->HasFloor(person->GetCurrentFloor()) && e->HasFloor(person->GetFinalFloor())) {
-			direct = true;
-		}
 		possible.insert(e);
 	}
 	
 
 	for (Elevator* elev : possible) {
-		if (direct) {
-			if (elev->GetCurrentFloor() == floor && elev->HasFloor(person->GetCurrentFloor()) && elev->HasFloor(person->GetFinalFloor())) {
-				return elev;
-			}
-			if (!elev->HasFloor(person->GetFinalFloor())) {
-				possible.erase(elev);
-			}
-		}
-		else {
-			if (elev->GetCurrentFloor() == floor) {
-				return elev;
-			}
-		}
+		if (elev->GetCurrentFloor() == floor) {
+			return elev;
+		}	
 	}
 
 	return *possible.begin();
@@ -425,4 +412,43 @@ void ElevatorLogic::HandleClosed(Environment &env, const Event &e) {
 		ExecuteTask(elev, env);
 	}
 
+}
+
+/*
+Returns the distance between two floors.
+Note: When distance is not natural returns -1
+*/
+int ElevatorLogic::GetDistance(Floor *f1, Floor *f2) {
+
+	if (f1 == f2) {
+		return 0;
+	}
+
+	int distance = f1->GetHeight() + f2->GetHeight();
+
+	if (distance % 2 != 0) {
+		return -1;
+	}
+	else {
+		distance /= 2;
+	}
+
+	while (true) {
+		if (f1->IsAbove(f2)) {
+			f1 = f1->GetAbove();
+		}
+		else if (f1->IsBelow(f2)) {
+			f1 = f1->GetBelow();
+		}
+
+		if (f1 == f2) {
+			break;
+		}
+		else {
+			distance += f1->GetHeight();
+		}
+
+	}
+
+	return distance;
 }
