@@ -19,6 +19,7 @@ class Floor;
 class Interface;
 class Person;
 
+
 class ElevatorLogic: public EventHandler {
 
 public:
@@ -27,57 +28,55 @@ public:
 
 	void Initialize(Environment &env);
 
-	typedef struct {
-		Floor* nextStop;
-		bool needsChange;
-		bool busy;
-		std::list<Person*> queue;
-
-	} ElevatorTask;
-
 	struct ElevatorState {
-		std::set<Person*> passengers;
-		bool beeping;
+		int load;
+		bool moving;
+		bool closing;
+		bool open;
 		bool broken;
 		bool overloaded;
-		bool requested;
+		bool busy;
+		bool up;
 		int movingID;
 
-	} ;
+	};
 
+	struct PersonState {
+		bool hasTraveled;
+		Elevator *elevator;
+	};
 
 private:
 	
 	void HandleAll(Environment &env, const Event &e);
-
 	void HandleNotify(Environment &env, const Event &e);
 	void HandleMoving(Environment &env, const Event &e);
 	void HandleStopped(Environment &env, const Event &e);
-	void HandleOpened(Environment &env, const Event &e);
 	void HandleClosed(Environment &env, const Event &e);
 	void HandleEntered(Environment &env, const Event &e);
 	void HandleExited(Environment &env, const Event &e);
 	void HandleMalfunction(Environment &env, const Event &e);
 	void HandleFixed(Environment &env, const Event &e);
+	void HandleOpened(Environment &env, const Event &e);
 
 
 	
-	Elevator* FindElevator(Person *person, Interface *interf);
-	void AddToQueue(Person *person, Elevator *elev);
-	void EraseFromQueue(Person *person, Elevator *elev);
-	void SetTask(Elevator *elev);
+	Elevator* FindElevator(Person *person, Interface *interf, std::string direction);
+	int GetElevatorScore(Elevator *elev, Person *person, std::string direction);
 	void SetState(Elevator *elev);
-	bool SetNextStop(Elevator *elev);
 	void ExecuteTask(Elevator *elev, Environment &env);
-	int GetWeight(std::set<Person*> passengers);
-	bool IsOverloaded(Elevator *elev);
+	bool IsOverloaded(Elevator *elev, Environment &env);
+	void CloseDoor(Elevator *elev, Environment &env);
+	void AddToQueue(Elevator *elev, Person *person);
+	void EraseFromQueue(Person *person);
 	int GetDistance(Floor *f1, Floor *f2);
-	
 
-	std::string log;
 
-	std::map<Elevator*,ElevatorTask> task;
+	std::map<Elevator*,std::list<Person*> > queue;
+	std::map<Elevator*,std::set<Person*> > passengers;
+	std::map<Person*,Floor*> stop;
 	std::map<Elevator*,ElevatorState> state;
+	std::map<Person*,PersonState> info;
 
 };
 

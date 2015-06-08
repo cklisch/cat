@@ -15,7 +15,7 @@ cat: $(OBJ_FILES)
 all: cat
 
 clean:
-	rm ../obj/* ../bin/*
+	rm ../obj/*.o ../bin/*
 
 
 	
