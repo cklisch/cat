@@ -3,7 +3,7 @@ Floor { 10 0 11 4 1 40 }
 Interface { 40 2 20 21 }
 
 Elevator { 20 2 90 11 2 30 31 }
-Elevator { 21 2 90 10 2 30 31 }
+Elevator { 21 2 5 10 2 30 31 }
 Interface { 30 1 10 }
 Interface { 31 1 11 }
 

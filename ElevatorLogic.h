@@ -29,21 +29,26 @@ public:
 	void Initialize(Environment &env);
 
 	struct ElevatorState {
+		std::set<Person*> requestors;
 		int load;
 		bool moving;
 		bool closing;
+		bool stopping;
+		bool beeping;
 		bool open;
 		bool broken;
-		bool overloaded;
 		bool busy;
 		bool up;
 		int movingID;
+		int closingID;
 
 	};
 
-	struct PersonState {
-		bool hasTraveled;
-		Elevator *elevator;
+	struct Request {
+		Floor *floor;
+		std::string direction;
+		Interface *interf;
+		Elevator *elev;
 	};
 
 private:
@@ -58,25 +63,30 @@ private:
 	void HandleMalfunction(Environment &env, const Event &e);
 	void HandleFixed(Environment &env, const Event &e);
 	void HandleOpened(Environment &env, const Event &e);
+	void HandleExiting(Environment &env, const Event &e);
+	void HandleEntering(Environment &env, const Event &e);
+	void HandleClosing(Environment &env, const Event &e);
+	void HanndleBeeping(Environment &env, const Event &e);
+	void HandleInteract(Environment &env, const Event &e);
+
 
 
 	
-	Elevator* FindElevator(Person *person, Interface *interf, std::string direction);
-	int GetElevatorScore(Elevator *elev, Person *person, std::string direction);
+	Elevator* FindElevator(Person *person, Interface *interf);
+	int GetElevatorTime(Elevator *elev, Person *person);
 	void SetState(Elevator *elev);
 	void ExecuteTask(Elevator *elev, Environment &env);
-	bool IsOverloaded(Elevator *elev, Environment &env);
-	void CloseDoor(Elevator *elev, Environment &env);
+	void CloseDoor( Environment &env, Elevator *elev, int delay);
 	void AddToQueue(Elevator *elev, Person *person);
 	void EraseFromQueue(Person *person);
 	int GetDistance(Floor *f1, Floor *f2);
+	bool CanExecuteTask(Elevator *elev);
+	void Stop(Environment &env, Elevator *elev, int delay);
 
 
-	std::map<Elevator*,std::list<Person*> > queue;
-	std::map<Elevator*,std::set<Person*> > passengers;
-	std::map<Person*,Floor*> stop;
+
 	std::map<Elevator*,ElevatorState> state;
-	std::map<Person*,PersonState> info;
+	std::map<Person*,Request> request;
 
 };
 
